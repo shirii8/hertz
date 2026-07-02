@@ -1,18 +1,16 @@
-
-create or replace function handle_new_user()
-returns trigger
-language plpgsql
-security definer
-as $$
-begin
-  insert into public.profiles(user_id, phone)
-  values (new.id, new.phone)
-  on conflict (phone)
-  do update set user_id = new.id;
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-after insert on auth.users for each row
-execute function handle_new_user();
+select
+id,
+first_name,
+last_name,
+dob,
+height_cm,
+neighbourhood,
+latitude,
+longitude,
+max_distance_km,
+min_age,
+max_age,
+phone
+from profiles
+left join children on children.id = profiles.children_id
+where id = '00000000-0000-0000-0000-000000000000'

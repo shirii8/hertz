@@ -1,0 +1,1 @@
+SELECT pg_get_functiondef('public.get_profile(integer)'::regprocedure);

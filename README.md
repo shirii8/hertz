@@ -2,3 +2,6 @@
 npx supabase db reset 
 <!-- to check db migrations from sql table editor -->
 npx supabase db reset 
+<!-- to check migrations from sql -->
+npx supabase migration list
+npx supabase migration list --local
