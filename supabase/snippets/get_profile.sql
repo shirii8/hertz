@@ -1,5 +1,5 @@
 CREATE OR REPLACE FUNCTION public.get_profile(page_size integer)
- RETURNS TABLE(id uuid, first_name text, age integer, height_cm integer, neighborhood text, children text, family_plan text, zodiac_sign text, gender text, sexuality text, ethnicities text[], pets text[], pronouns text[], photos jsonb, answers jsonb)
+ RETURNS TABLE(id uuid, first_name text, age integer, height_cm integer, neighbourhood text, children text, family_plan text, zodiac_sign text, gender text, sexuality text, ethnicities text[], pets text[], pronouns text[], photos jsonb, answers jsonb)
  LANGUAGE plpgsql
  SECURITY DEFINER
 AS $function$

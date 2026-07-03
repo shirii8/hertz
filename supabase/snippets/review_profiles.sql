@@ -15,9 +15,9 @@ declare
 begin
 
 -- 1. Fetch the actor's profile ID, location, and max distance preference
-select id, location, max_distance_km 
+select id, location, max_distance_km
 into v_actor_id, v_loc, v_max_distance
-from profiles 
+from profiles
 where user_id = auth.uid();
 
 if v_actor_id is null then
@@ -26,8 +26,8 @@ end if;
 
 -- 2. Bulk update skipped interactions back to review status using an optimized JOIN (FROM clause)
 update interactions i
-set 
-  status_id = review_status, 
+set
+  status_id = review_status,
   updated_at = now()
 from profiles p
 where i.target_id = p.id

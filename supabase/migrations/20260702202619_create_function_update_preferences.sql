@@ -29,7 +29,7 @@ $$;
 create or replace function update_location(
   latitude float8,
   longitude float8,
-  neighborhood text
+  neighbourhood text
 )
 returns void
 language plpgsql
@@ -50,7 +50,7 @@ update profiles
 set
   latitude = update_location.latitude,
   longitude = update_location.longitude,
-  neighborhood = update_location.neighborhood,
+  neighbourhood = update_location.neighbourhood,
   updated_at = now()
 where id = profile_id;
 
