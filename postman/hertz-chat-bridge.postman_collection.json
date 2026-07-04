@@ -1,0 +1,348 @@
+{
+  "info": {
+    "name": "Hertz - Chat Bridge & Matching",
+    "description": "Three folders:\n\n- 'Match Walkthrough (Runner)' is a fully chained, run-in-one-go sequence: logs in two seeded test users via phone OTP, has user1 like user2, then user2 accepts (match) which provisions a real Sendbird channel, then unmatches which deletes it. Every request's Test script saves what the next request needs as a collection variable, so you can just select this folder in Postman's Collection Runner and hit Run - no manual copy/paste. This is the actual app flow (public.match / public.unmatch RPCs).\n- 'Supabase' has the same match/unmatch requests as standalone, fill-in-the-variables-yourself requests, for when you already have an interaction_id and a user's access_token handy.\n- 'Chat' calls chat.create_channel / chat.delete_channel directly (service_role only) - the low-level bridge functions that match/unmatch call internally. Useful for isolating the Sendbird bridge from the matching logic while debugging.\n\nSeeded test users (from the CSV, phone = 1 + zero-padded profile number, OTP is always 111111 per supabase/config.toml [auth.sms.test_otp]): user1_phone 10000000001 = David, user2_phone/user2_profile_id 00000000-0000-0000-0000-000000000014 = Maria.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "supabase_url",
+      "value": "http://127.0.0.1:54321",
+      "description": "Local: from `npx supabase status` -> API_URL. Remote: https://<project-ref>.supabase.co"
+    },
+    {
+      "key": "anon_key",
+      "value": "",
+      "description": "From `npx supabase status` -> ANON_KEY (local) or Project Settings -> API (remote)."
+    },
+    {
+      "key": "service_role_key",
+      "value": "",
+      "description": "From `npx supabase status` -> SERVICE_ROLE_KEY (local) or Project Settings -> API (remote). Required for the 'Chat' folder only: chat.* is granted to service_role only."
+    },
+    { "key": "user1_phone", "value": "10000000001", "description": "Seeded test user who sends the like (David)." },
+    { "key": "user2_phone", "value": "10000000014", "description": "Seeded test user who receives the like and accepts it (Maria)." },
+    { "key": "user2_profile_id", "value": "00000000-0000-0000-0000-000000000014", "description": "profiles.id for user2_phone - the target passed to like_profile." },
+    { "key": "otp_code", "value": "111111", "description": "Fixed test OTP from supabase/config.toml [auth.sms.test_otp]." },
+    { "key": "access_token_user1", "value": "", "description": "Set automatically by 'Match Walkthrough (Runner)' step 2." },
+    { "key": "access_token_user2", "value": "", "description": "Set automatically by 'Match Walkthrough (Runner)' step 5." },
+    { "key": "access_token", "value": "", "description": "JWT for the standalone 'Supabase' folder requests - paste whichever user's token should call match/unmatch." },
+    { "key": "interaction_id", "value": "", "description": "interactions.id returned by like_profile() - this is also the Sendbird channel_url. Set automatically by the Runner folder, or paste manually for the standalone 'Supabase' folder." },
+    { "key": "channel_id", "value": "", "description": "interactions.id returned by like_profile() - used directly by the 'Chat' folder requests." },
+    { "key": "user1_id", "value": "", "description": "your own profiles.id (Chat folder only)" },
+    { "key": "user2_id", "value": "", "description": "the other profile's profiles.id (Chat folder only)" }
+  ],
+  "item": [
+    {
+      "name": "Match Walkthrough (Runner)",
+      "item": [
+        {
+          "name": "1. Login User1 (David) - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{user1_phone}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/otp",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "otp"]
+            },
+            "description": "Requests an OTP for the seeded test phone number. Locally this doesn't send a real SMS - the fixed test OTP below always works."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Login User1 (David) - Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('got access_token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.access_token).to.be.a('string');",
+                  "    pm.collectionVariables.set('access_token_user1', json.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"sms\",\n  \"phone\": \"{{user1_phone}}\",\n  \"token\": \"{{otp_code}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/verify",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "verify"]
+            },
+            "description": "Exchanges the test OTP for a real JWT. Test script saves it to {{access_token_user1}}."
+          },
+          "response": []
+        },
+        {
+          "name": "3. like_profile (User1 likes User2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('got interaction id', function () {",
+                  "    const id = pm.response.json();",
+                  "    pm.expect(id).to.be.a('string');",
+                  "    pm.collectionVariables.set('interaction_id', id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token_user1}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile\": \"{{user2_profile_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/like_profile",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "like_profile"]
+            },
+            "description": "User1 likes user2. Returns the new interactions.id. Test script saves it to {{interaction_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Login User2 (Maria) - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{user2_phone}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/otp",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "otp"]
+            },
+            "description": "Requests an OTP for the seeded test phone number."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Login User2 (Maria) - Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('got access_token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.access_token).to.be.a('string');",
+                  "    pm.collectionVariables.set('access_token_user2', json.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"sms\",\n  \"phone\": \"{{user2_phone}}\",\n  \"token\": \"{{otp_code}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/verify",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "verify"]
+            },
+            "description": "Exchanges the test OTP for a real JWT. Test script saves it to {{access_token_user2}}."
+          },
+          "response": []
+        },
+        {
+          "name": "6. match (User2 accepts -> real Sendbird create_channel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token_user2}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction\": \"{{interaction_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/match",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "match"]
+            },
+            "description": "User2 (the target of the like) accepts it. Calls chat.create_channel(interaction, actor, target) for real, then sets interactions.status_id to matched. Returns 204 with no body on success. Spends one Sendbird API call."
+          },
+          "response": []
+        },
+        {
+          "name": "7. unmatch (-> real Sendbird delete_channel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token_user2}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction\": \"{{interaction_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/unmatch",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "unmatch"]
+            },
+            "description": "Either side can unmatch. Calls chat.delete_channel(interaction) for real, then sets interactions.status_id to unmatched. Returns 204 with no body on success. Spends one Sendbird API call."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Supabase",
+      "item": [
+        {
+          "name": "match",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction\": \"{{interaction_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/match",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "match"]
+            },
+            "description": "Standalone version of step 6 above - fill in {{access_token}} and {{interaction_id}} yourself. Called by the target of a like (from get_likes()) to accept it. Verifies the interaction is a pending like directed at the caller's profile, calls chat.create_channel(interaction, actor, target) to provision the real Sendbird channel, then sets interactions.status_id to matched. Returns 204 with no body on success."
+          },
+          "response": []
+        },
+        {
+          "name": "unmatch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction\": \"{{interaction_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/unmatch",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "unmatch"]
+            },
+            "description": "Standalone version of step 7 above - fill in {{access_token}} and {{interaction_id}} yourself. Called by either side of a match to end it. Verifies the interaction is a match involving the caller's profile, calls chat.delete_channel(interaction) to tear down the real Sendbird channel, then sets interactions.status_id to unmatched. Returns 204 with no body on success."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "create_channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{service_role_key}}" },
+              { "key": "Content-Profile", "value": "chat", "description": "routes the RPC call to the chat schema instead of public" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"{{channel_id}}\",\n  \"user1\": \"{{user1_id}}\",\n  \"user2\": \"{{user2_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/create_channel",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "create_channel"]
+            },
+            "description": "Creates a Sendbird group channel (channel_url = channel) between user1 and user2. Treats Sendbird's 400202 (channel already exists) as success. Returns 204 with no body on success."
+          },
+          "response": []
+        },
+        {
+          "name": "delete_channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{service_role_key}}" },
+              { "key": "Content-Profile", "value": "chat" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"{{channel_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/delete_channel",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "rpc", "delete_channel"]
+            },
+            "description": "Deletes the Sendbird group channel with the given channel_url. Returns 204 with no body on success."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

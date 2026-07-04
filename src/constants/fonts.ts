@@ -1,0 +1,16 @@
+export const fonts = {
+  "PlayfairDisplay-Regular": require("~/assets/font/PlayfairDisplay-Regular.ttf"),
+  "PlayfairDisplay-Medium": require("~/assets/font/PlayfairDisplay-Medium.ttf"),
+  "PlayfairDisplay-SemiBold": require("~/assets/font/PlayfairDisplay-SemiBold.ttf"),
+  "PlayfairDisplay-Bold": require("~/assets/font/PlayfairDisplay-Bold.ttf"),
+  "PlayfairDisplay-ExtraBold": require("~/assets/font/PlayfairDisplay-ExtraBold.ttf"),
+  "PlayfairDisplay-Black": require("~/assets/font/PlayfairDisplay-Black.ttf"),
+  "Poppins-Thin": require("~/assets/font/Poppins-Thin.ttf"),
+  "Poppins-Light": require("~/assets/font/Poppins-Light.ttf"),
+  "Poppins-Regular": require("~/assets/font/Poppins-Regular.ttf"),
+  "Poppins-Medium": require("~/assets/font/Poppins-Medium.ttf"),
+  "Poppins-SemiBold": require("~/assets/font/Poppins-SemiBold.ttf"),
+  "Poppins-Bold": require("~/assets/font/Poppins-Bold.ttf"),
+  "Poppins-ExtraBold": require("~/assets/font/Poppins-ExtraBold.ttf"),
+  "Poppins-Black": require("~/assets/font/Poppins-Black.ttf"),
+};
