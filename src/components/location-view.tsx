@@ -1,9 +1,12 @@
 import { LocationData } from "@/types/location";
 import { openSettings } from "expo-linking";
 import * as Location from "expo-location";
+import { cssInterop } from "nativewind";
 import { FC, useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 import MapView, { Details, Region } from "react-native-maps";
+
+cssInterop(MapView, { className: { target: "style" } });
 
 const DEFAULT_DELTA = {
   latitudeDelta: 0.025,

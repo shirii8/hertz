@@ -13,13 +13,11 @@ import { VideoView } from "expo-video";
 import LottieView from "lottie-react-native";
 import { cssInterop } from "nativewind";
 import { useEffect } from "react";
-import MapView from "react-native-maps";
 import "../../global.css";
 
 cssInterop(VideoView, { className: { target: "style" } });
 cssInterop(Ionicons, { className: { target: "style" } });
 cssInterop(Image, { className: { target: "style" } });
-cssInterop(MapView, { className: { target: "style" } });
 cssInterop(Checkbox, { className: { target: "style" } });
 cssInterop(LottieView, { className: { target: "style" } });
 
