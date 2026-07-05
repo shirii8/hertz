@@ -78,7 +78,12 @@ export default function Page() {
             onChangeText={handlePhoneChange}
             maxLength={16}
             ref={phoneRef}
+            placeholder="+91XXXXXXXXXX"
+            placeholderTextColor={colors.neutral[300]}
           />
+          <Text className="text-sm font-poppins-regular text-neutral-400 mt-2">
+            Include your country code, e.g. +91XXXXXXXXXX
+          </Text>
           {isError && (
             <Text className="text-red-500 text-sm text-center mt-4">
               {error.message}
