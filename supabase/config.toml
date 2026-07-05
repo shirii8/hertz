@@ -318,7 +318,7 @@ enabled = true
 account_sid = "env(SUPABASE_AUTH_SMS_TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(SUPABASE_AUTH_SMS_TWILIO_MESSAGE_SERVICE_SID)"
 # # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
-auth_token = "SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN"
+auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
 # Multi-factor-authentication is available to Supabase Pro plan.
 [auth.mfa]
